@@ -78,11 +78,12 @@ Present this to the user immediately after Discovery + Practice Audit and wait f
 *   **Priorities**: [e.g., Rich design, zero dependency bloat, fast load times]
 *   **Risks**: [e.g., Version mismatches, Metro caching, overflow on small screens]
 *   **Practice Audit**: [Summary of flagged items + agreed resolutions, or "Passed"]
+*   **Review Mode**: [Frequently | Occasionally | Never | Let's gamble on code] (Prompt user to select)
 *   **Proposed Direction**: [General flow of implementation]
 
 ***
 
-**Does this match your expectations? Confirm to proceed to Planning.**
+**Does this match your expectations? Confirm to proceed to Planning and select your preferred Review Mode (Frequently, Occasionally, Never, or Let's gamble on code).**
 ```
 
 ---

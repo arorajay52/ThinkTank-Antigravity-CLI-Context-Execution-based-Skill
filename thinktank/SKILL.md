@@ -7,7 +7,7 @@ description: |
   - Concise Planning (Approach, Scope In/Out, Verb-First Action Items, Validation plan)
   - Executing Plans (Critical review, batch execution with checkpoints, stop-on-blocker rules).
   Triggered when initiating new tasks, designing architecture, or working on React/Vite/Expo frontends.
-version: 2.2.0
+version: 2.3.0
 ---
 
 # ThinkTank v2: Strategic Reasoning & Execution System
@@ -80,13 +80,14 @@ Before writing any plans or code, you MUST pause and establish an immutable alig
 *   **Risks**: [e.g., Metro caching, Supabase RLS bypass, overflow on small screens]
 *   **Practice Audit**: [Summary of flagged items + agreed resolutions, or "Passed"]
 *   **Open Questions**: [List unresolved questions, if any]
+*   **Review Mode**: [Frequently | Occasionally | Never | Let's gamble on code] (Explicitly prompt the user to choose)
 *   **Decision Log**: [Record alternatives considered and why this path was chosen]
 ```
 
 Then ask the user:
-> *"Does this accurately reflect your intent? Please confirm or correct anything before we move to planning."*
+> *"Does this accurately reflect your intent? Please confirm or correct anything, and select your preferred **Review Mode** (Frequently, Occasionally, Never, or Let's gamble on code) before we move to planning."*
 
-**Do NOT proceed** to Planning until the user gives explicit confirmation.
+**Do NOT proceed** to Planning until the user gives explicit confirmation and selects a Review Mode.
 
 ---
 
@@ -126,15 +127,19 @@ Once the Understanding Lock is confirmed, turn the request into a **single, acti
 
 ### Phase 4: Smart Batch Execution
 
-Execute the approved plan systematically in batches to allow checkpoints for review.
+Execute the approved plan systematically, adhering to the selected **Review Mode** checkpoint rules:
 
-*   **Batch Execution**: Default execution limit is **at most 3 tasks at a time**.
+*   **Review Mode Checkpoint Rules**:
+    *   `Frequently`: Stop, report output, and wait for developer approval after **every single task/file edit** is completed.
+    *   `Occasionally` (Default): Execute in batches of **up to 3 tasks at a time**, then stop to report outputs and wait for approval before continuing.
+    *   `Never`: Execute the entire plan from start to finish continuously without stopping for checkpoints, unless blocked by a critical failure.
+    *   `Let's gamble on code`: Execute the entire plan continuously. Run validation checks (typecheck, lint, test) after edits. Only stop and prompt the user if a validation check fails, or when the entire plan is fully complete.
 *   **Progress Tracking**: Maintain a `task.md` checklist. Update it progressively (`[ ]` → `[/]` → `[x]`).
 *   **Explicit Code Labeling**: Label assumptions in code comments:
     *   `[Known]`: Facts established from codebase analysis.
     *   `[Assumption]`: Reason for style/logic choice.
-*   **Verification Check**: Run verification tests as specified after each task.
-*   **Batch Handoff**: When a batch is complete, show what was implemented, show verification outputs, and report: *"Ready for feedback. Proceed with the next batch?"*
+*   **Verification Check**: Run verification tests as specified after each task/batch.
+*   **Handoff**: When a checkpoint is reached, show what was implemented, show verification outputs, and report: *"Ready for feedback. Proceed with the next steps?"*
 *   **Stop-on-Blocker Rule**: STOP executing immediately when:
     *   You hit a blocker mid-batch (missing dependency, test failure, unclear plan).
     *   Verification fails repeatedly.
