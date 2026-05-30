@@ -4,7 +4,7 @@ description: |
   A strategic diagnostic and fix sub-skill for debugging, fixing type errors, layout alignment, performance lag, and codebase refactoring.
   AUTO-TRIGGERS on: "thinktank:debug", "-debug", "debug", "fix", "broken", "crash", "overflow", "not working", "error", "bug", "layout issue", "misaligned", "not rendering", "blank screen", "flickering".
   Also triggered when analyzing runtime crashes, memory leaks, and TypeScript compilation errors.
-version: 2.2.0
+version: 2.3.0
 ---
 
 # ThinkTank:Debug — Diagnostic & Fix Protocol
@@ -82,6 +82,10 @@ To maintain extreme focus and prevent code regressions, **NEVER combine multiple
 
 *   **Action**: Locate the exact files, lines, and types affected.
 *   **Methodology**:
+    *   **Capture Error & Trace**: Log and parse the full raw error message, warning, or crash stack trace.
+    *   **Reproduction Steps**: Identify and state the exact user actions, inputs, or system states required to trigger the bug.
+    *   **Recent Changes Check**: Check recent git commits (`git log -n 5`) or unstaged changes (`git diff`) to isolate recent regressions.
+    *   **Form & Test Hypotheses**: Draft clear hypotheses of what is failing. Inspect variable/component states, and add strategic, temporary console logging if needed.
     *   **TypeScript/Build Errors**: Run compiler typecheck to get exact line numbers. View $\pm20$ lines of context.
     *   **UI Layout bugs**: Check for parent container dimensions, missing scroll view wrappers, or fixed pixel sizes.
     *   **Performance/Lag**: 
@@ -95,6 +99,8 @@ To maintain extreme focus and prevent code regressions, **NEVER combine multiple
     - **Line(s)**: [line numbers]
     - **Category**: [Type Mismatch | Layout Overflow | State Render Loop | Performance Lag]
     - **Root Cause**: [Clear 1-2 sentence explanation of why it fails]
+    - **Reproduction Steps**: [Action path to trigger the error]
+    - **Evidence**: [Stack trace traces, logs, or profiling metrics]
     ```
 
 ---
@@ -111,6 +117,10 @@ To maintain extreme focus and prevent code regressions, **NEVER combine multiple
     🔧 **Proposed Fix**
     - **File(s)**: [list with file links]
     - **Change**: [Brief description of code change]
+    - **Root Cause Explanation**: [Why the previous code failed]
+    - **Evidence**: [Logs, measurement metrics, or traces supporting this fix]
+    - **Testing Approach**: [Manual test steps or verification commands to run]
+    - **Prevention Recommendations**: [Design changes or rules to prevent reoccurrence]
     - **Impact**: [What this fixes, side-effects, if any]
 
     Proceed with this fix?
