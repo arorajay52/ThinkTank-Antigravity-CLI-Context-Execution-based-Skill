@@ -1,66 +1,63 @@
-# Capacitor Mobile Guidelines
+# Capacitor Mobile Guidelines (Verified Best Practices)
 
-This document outlines best practices for wrapping web applications for mobile devices using **Capacitor.js**. Consult this file **only** when working on Capacitor mobile web wrapper features.
-
----
-
-## 1. Viewport & Styling (Safe Area Insets)
-
-Unlike native Expo apps, Capacitor runs inside a native web container (WebView). To prevent UI elements (headers, footers) from being hidden under device notches or home indicators, use CSS safe area environment variables:
-
-```css
-/* Add to global index.css or styling root */
-body {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-}
-```
-
-Ensure headers or navigation bars use `position: sticky` or absolute padding with safe area variables:
-```css
-.app-header {
-  padding-top: max(12px, env(safe-area-inset-top));
-}
-```
+This document outlines official best practices from the Ionic/Capacitor core team for building production-ready hybrid mobile applications.
 
 ---
 
-## 2. Keyboard & Viewport Resizing
+## 1. Encapsulate Capacitor Plugins (Wrapper Services)
 
-*   On Android, the soft keyboard resizes the web viewport by default, which can compress layout heights.
-*   On iOS, the keyboard overlays the viewport.
-*   Use the `@capacitor/keyboard` plugin to listen to keyboard events and adjust scroll offsets dynamically:
-    ```typescript
-    import { Keyboard } from '@capacitor/keyboard';
+**Never use Capacitor plugins directly inside your component views.** Instead, create dedicated wrapper services or provider hooks to encapsulate plugin calls.
 
-    Keyboard.addListener('keyboardWillShow', info => {
-      console.log('Keyboard will show with height:', info.keyboardHeight);
-    });
+*   *Why*: Centralizes platform availability checks, simplifies mocking native interfaces during unit testing, and ensures API upgrades only require changes in a single file.
+
+### Example Plugin Wrapper:
+```typescript
+// services/storage-service.ts
+import { Preferences } from '@capacitor/preferences';
+
+export const storageService = {
+  async get(key: string): Promise<string | null> {
+    try {
+      const { value } = await Preferences.get({ key });
+      return value;
+    } catch (error) {
+      console.error('Capacitor Preferences get error:', error);
+      return null;
+    }
+  },
+  async set(key: string, value: string): Promise<void> {
+    await Preferences.set({ key, value });
+  }
+};
+```
+
+---
+
+## 2. Treat Native Folders as Source Code
+
+The `android` and `ios` platforms directories created by Capacitor **are not temporary files or build artifacts**. 
+*   **Version Control**: Commit these directories to Git.
+*   **Direct Modification**: Perform all platform configurations (modifying plist variables in `Info.plist`, editing application permissions in `AndroidManifest.xml`, or adding custom Gradle hooks) directly inside their respective folders.
+
+---
+
+## 3. WebView Security & Secure Storage
+
+*   **Secrets Prevention**: Never embed API secret keys or private credentials in raw frontend code or asset bundles, as they can be easily unpacked from the WebView bundle. Keep sensitive computation on the server-side.
+*   **Secure Storage**: Do not use standard `localStorage` or `sessionStorage` for storing authentication tokens or PII, as WebViews can evict this data on memory pressure. Use secure storage wrapper plugins that bind to **iOS Keychain** and **Android Keystore** (e.g. `@capawesome/capacitor-secure-storage` or `@ionic/secure-storage`).
+*   **Safe Area Handling**: Ensure headers and interactive buttons account for device notches and home indicators using CSS safe-area variables:
+    ```css
+    body {
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
     ```
 
 ---
 
-## 3. Capacitor Native Plugins
+## 4. Development & Build Steps
 
-Avoid using direct browser APIs for device capabilities when wrapped. Use Capacitor plugins for better native device integration:
-
-| Resource | Web API | Capacitor Plugin |
-|----------|---------|------------------|
-| Storage | `localStorage` | `@capacitor/preferences` (Prevents OS-level data eviction) |
-| Dialogs | `alert()`, `confirm()` | `@capacitor/dialog` (Provides native modal alerts) |
-| Connectivity | `navigator.onLine` | `@capacitor/network` (Provides accurate link status) |
-| Haptics | N/A | `@capacitor/haptics` (Trigger vibrations on touch feedback) |
-
----
-
-## 4. Build & Sync Workflow
-
-Every code change must be compiled to static web assets and synced to native platforms:
-
-1.  **Build Web App**: `npm run build` (creates production folder, e.g. `dist/` or `build/`).
-2.  **Sync Web Assets to Native Native Platforms**: `npx cap sync` (copies assets to android/ios folders and syncs plugins).
-3.  **Run Native Client**:
-    *   Android Studio: `npx cap open android`
-    *   Xcode: `npx cap open ios`
+1.  **Prioritize Official Plugins**: Use official `@capacitor/*` core plugins over outdated Cordova plugins for stability and native compilation speed.
+2.  **Web Assets Compilation**: Compile the web app to build files (e.g. `dist/` or `build/` directory).
+3.  **Syncing to Native**: Run `npx cap sync` to copy assets and update native bindings.
+4.  **Testing**: Always test native device APIs (camera, push notifications, biometrics) on physical iOS and Android hardware early in the process.

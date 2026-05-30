@@ -1,103 +1,59 @@
-# Postgres & Supabase Backend Guidelines
+# Postgres & Supabase Backend Guidelines (Verified Best Practices)
 
-This document details database architecture, Row-Level Security (RLS), custom triggers, RPC functions, and optimization patterns. Consult this file **only** when working on database schemas or backend-logic procedures.
-
----
-
-## 1. Row-Level Security (RLS)
-
-Always secure database tables at the engine level. No table should exist without RLS enabled.
-
-### Enabling RLS:
-```sql
-ALTER TABLE public.table_name ENABLE ROW LEVEL SECURITY;
-```
-
-### RLS Policies Patterns:
-*   **Public Read access**:
-    ```sql
-    CREATE POLICY "Allow public read access" ON public.table_name
-      FOR SELECT USING (true);
-    ```
-*   **User-Bound Owner access (Read/Write)**:
-    ```sql
-    CREATE POLICY "Allow individual write access" ON public.table_name
-      FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-    ```
-*   **Admin-only access**:
-    ```sql
-    CREATE POLICY "Allow admins all access" ON public.table_name
-      FOR ALL TO authenticated USING (
-        EXISTS (
-          SELECT 1 FROM public.user_profiles
-          WHERE id = auth.uid() AND role = 'admin'
-        )
-      );
-    ```
+This document contains verified security and performance best practices for Postgres database engines and Supabase backend layers.
 
 ---
 
-## 2. Remote Procedure Call (RPC) Functions
+## 1. Security Definer Functions & Search Path Protection
 
-Functions executed via client APIs (e.g., `supabase.rpc()`) must be built with strict security contexts.
+By default, functions in PostgreSQL inherit the `search_path` of the calling user. In `SECURITY DEFINER` functions, this presents a critical vulnerability where malicious users can hijack execution by manipulating their search path to point to mock tables or procedures.
 
-### Security Definer vs. Invoker:
-*   **`SECURITY INVOKER` (Default/Preferred)**: Runs with the privileges of the calling user. Safest context for standard user queries.
-*   **`SECURITY DEFINER`**: Runs with the privileges of the function's creator (often admin/super-user). Use only when database triggers or actions require elevated permissions.
+### The Standard Fix: Pin `search_path = ''` (Empty String)
+*   **Vulnerability Prevention**: Always set `SET search_path = ''` when creating a `SECURITY DEFINER` function.
+*   **Fully Qualified Names**: Forcing `search_path` to empty requires all database object references inside the function body to be fully qualified (e.g. `public.my_table`, `auth.users`).
 
-### CRITICAL Security Rule for DEFINER Functions:
-Always explicitly set a safe `search_path` to prevent search-path hijacking vulnerabilities. Never omit this setting.
 ```sql
-CREATE OR REPLACE FUNCTION public.custom_admin_operation(target_id UUID)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp -- Protects schemas from hijacking
-AS $$
-BEGIN
-  -- Database logic here
-END;
-$$;
-```
-
----
-
-## 3. Triggers & Automation
-
-Use database triggers to synchronize profiles, audit actions, or compute metrics automatically during write transactions.
-
-### Creating a Trigger Function & Trigger:
-```sql
--- 1. Create Trigger Function
-CREATE OR REPLACE FUNCTION public.handle_new_user_sync()
+-- ✅ SECURE: Pinning search_path to empty and using fully qualified names
+CREATE OR REPLACE FUNCTION public.handle_user_registration()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = '' -- Critical security pin
 AS $$
 BEGIN
-  INSERT INTO public.user_profiles (id, email, name)
-  VALUES (new.id, new.email, new.raw_user_meta_data->>'name');
+  INSERT INTO public.user_profiles (id, email, is_admin)
+  VALUES (new.id, new.email, false);
   RETURN NEW;
 END;
 $$;
-
--- 2. Bind Trigger to Table
-CREATE OR REPLACE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_sync();
 ```
 
 ---
 
-## 4. Performance & Indexing
+## 2. Invoker vs. Definer Context
 
-*   **Foreign Key Indexes**: Add indexes to every foreign key column used in joins or filter operations.
-    ```sql
-    CREATE INDEX idx_table_name_user_id ON public.table_name(user_id);
-    ```
-*   **Composite Indexes**: For queries filtering by multiple fields concurrently (e.g. `WHERE user_id = X AND status = Y`), create a composite index:
-    ```sql
-    CREATE INDEX idx_table_user_status ON public.table_name(user_id, status);
-    ```
-*   **Cascade Deletes**: Ensure foreign keys that depend on user accounts or parent items clean up automatically using `ON DELETE CASCADE` to prevent orphaned rows.
+*   **Prefer `SECURITY INVOKER` (Default)**: Always write functions as `SECURITY INVOKER` unless you explicitly need to bypass Row-Level Security (RLS) or execute procedures the caller has no direct rights to perform. Invoker functions naturally respect RLS policies during execution.
+*   **Manual Checks in DEFINER**: If you must use `SECURITY DEFINER` (e.g., inside auth trigger events or admin actions), remember it **bypasses RLS entirely**. You must write manual security validation code inside the function body (e.g., verifying `auth.uid()` or role privileges).
+
+---
+
+## 3. Function Execute Permissions (Privilege Auditing)
+
+By default, newly created database functions can be executed by the `PUBLIC` role (meaning any user or anonymous request can call them).
+*   **Revoke Public Execute**: Always revoke public execution permissions on sensitive or administrative functions.
+*   **Grant Explicitly**: Only grant `EXECUTE` privileges to specific authorized roles (e.g., `authenticated`, `service_role`).
+
+```sql
+-- Secure execution rights
+REVOKE EXECUTE ON FUNCTION public.handle_user_registration() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.handle_user_registration() FROM anon;
+GRANT EXECUTE ON FUNCTION public.handle_user_registration() TO service_role;
+```
+
+---
+
+## 4. Row-Level Security (RLS) & Performance
+*   **Advisors**: Use Dashboard Advisors (Database > Advisors) regularly to check for unsecured functions ("search path mutable") or tables missing RLS.
+*   **Policy Optimization**: Avoid complex, slow queries in RLS `USING` clauses. RLS policies are evaluated for every single row returned by a query.
+    *   If using functions in RLS policies, write them as helper views or wrap queries in a `SELECT` statement to allow Postgres to cache execution plans.
+    *   Add B-Tree indexes to all columns referenced in RLS filter policies (e.g. `tenant_id`, `user_id`).

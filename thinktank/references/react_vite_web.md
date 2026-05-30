@@ -1,80 +1,55 @@
-# React Vite (Web Frontend) Technical Guidelines
+# React Vite Web Frontend Guidelines (Verified Best Practices)
 
-This document outlines verified, high-leverage architectural patterns and guidelines for building web applications using React Vite. Consult this file **only** when working on web-targeted features.
+This document compiles verified best practices from industry-standard resources (e.g. Bulletproof React, Robin Wieruch's structural guidelines) for building scalable and performant Vite-based React web applications.
 
 ---
 
-## 1. Feature-Based Architecture (Bulletproof React)
+## 1. Evolutionary Folder Architecture (Robin Wieruch)
 
-Organize code by **features** rather than by file type. This encapsulates related logic and makes the codebase highly scalable.
+Do not over-engineer folder hierarchies early. Start simple and allow the structure to evolve organically.
+
+*   **Rule of Flat Structure**: Begin with a flat layout. Extract folders only when a component grows too large or requires isolated sub-components.
+*   **Keep Nesting Shallow**: Avoid nesting folders more than two levels deep (e.g. `src/features/auth/components/button.tsx` is fine; do not nest deeper like `src/features/auth/components/buttons/primary/small/...`). If nesting goes deeper, decompose the component logic.
+*   **Unidirectional Dependency Flow**: Code dependencies must flow in a single direction:
+    `Shared Resources (components, hooks, utils) ──> Domain Features ──> Pages / App Router`
+    *   *Critical Rule*: Generic or shared components inside `src/components/` must **never** import from feature folders.
+*   **Barrel Files Caution**: Barrel files (using `index.ts` to re-export other files) simplify imports but can degrade tree-shaking performance and dev startup times in Vite. Prefer direct imports (e.g., `import { Button } from '@/components/button'`) if barrel files become a bottleneck.
+
+---
+
+## 2. Feature-Based Modular Architecture (Bulletproof React)
+
+Group code by **domain or feature** rather than by file type. This encapsulates related logic and simplifies refactoring.
 
 ### Directory Structure
 ```text
 src/
-  app/         # Application-level setup (router, global providers, main App component)
-  assets/      # Static assets (images, icons)
-  components/  # Shared, reusable UI components used across features (Buttons, Inputs, Layouts)
-  config/      # Global configurations and environment variables
-  features/    # Feature-specific modules (self-contained logic)
-  hooks/       # Shared, global hooks
-  lib/         # Pre-configured instances of third-party libraries (e.g., Axios, TanStack Query client)
-  providers/   # Global context providers wrapping the app
-  types/       # Global TypeScript types and interfaces
-  utils/       # Shared utility functions and helper methods
+  app/         # Application setup (router config, global providers, root App)
+  components/  # Shared, generic UI components (Buttons, Inputs, Modals)
+  features/    # Domain-specific feature modules (e.g., auth, users, dashboard)
+  hooks/       # Shared, global hooks (e.g., useLocalStorage, useDebounce)
+  lib/         # Library configs (Axios instance, React Query client config)
+  types/       # Global TypeScript types
+  utils/       # Helper utilities (formatters, date math)
 ```
 
 ### Anatomy of a Feature (`src/features/feature-name/`)
-Each feature folder acts as a self-contained module:
-*   `api/`: API request declarations (fetchers, mutations, react-query hooks).
-*   `components/`: Components specific to this feature.
-*   `hooks/`: Custom hooks for the feature's logic.
-*   `routes/`: Route definitions and page components for the feature.
-*   `stores/`: Localized state management (Zustand slices) for the feature.
-*   `types/`: TypeScript types specific to the domain.
-*   `index.ts`: The **Public API** of the feature. Export ONLY what other parts of the app need to access. Treat everything else as private.
-
-*Rule*: Prevent cross-feature imports. Features should be composed at the application level (`src/app/` or `src/pages/`) rather than importing from each other directly.
+Keep all resources dedicated to a single feature self-contained:
+*   `api/`: API fetch hooks (e.g., `useUpdateProfile.ts` using React Query).
+*   `components/`: Sub-components specific to this feature.
+*   `hooks/`: Custom React hooks for this feature's logic.
+*   `types/`: TypeScript definitions scoped to the domain.
+*   `index.ts`: The feature's Public API. Export **only** the entry-point components or hooks that the rest of the application is allowed to import.
 
 ---
 
-## 2. Component Design Principles
-*   Use **Functional Components** with Hooks.
-*   **Single Responsibility**: Components should do one thing. Break down components > 150 lines.
-*   **Props Destructuring**: Always destructure props in the function signature for immediate visibility.
-*   **Dumb vs. Smart Components**: Keep UI components (dumb/presentational) in `src/components/`. Keep data-fetching and business logic (smart/container) in `src/features/`.
-*   **Named Exports**: Prefer named exports for components to ensure consistent naming during imports and better refactoring support. Avoid `default export` except for lazy-loaded route components.
+## 3. Component & State Management
+*   **Named Exports**: Use named exports (`export const Component = ...`) rather than default exports. This ensures consistent naming across imports and refactoring tooling. Use default exports only for lazy-loaded route pages.
+*   **Data Fetching**: Do **not** use raw `useEffect` hooks for data fetching. Use **TanStack Query** (React Query) or **SWR** to manage server cache, background refreshes, and state lifecycle.
+*   **Zustand for UI State**: Use Zustand or lightweight Context for client-only UI states (sidebars, theme, dialogs).
 
 ---
 
-## 3. Styling Standards
-*   **Vanilla CSS**: Use CSS Variables defined in `styles/variables.css` (or `index.css`) for theme switching (dark/light), typography, spacing, and animations.
-*   **Tailwind CSS**: If using Tailwind, use `clsx` and `tailwind-merge` (`twMerge`) together (often combined in a `cn` utility function) to handle dynamic classes safely without CSS conflict.
-*   **Aesthetics**: Always style with premium, rich visual design:
-    *   Sleek glassmorphism (`backdrop-filter: blur(10px)`).
-    *   Subtle micro-animations (`transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1)`).
-    *   High-contrast, professional typography (e.g., `Inter`, `Outfit`).
-
----
-
-## 4. State & Data Management
-*   **Local State**: Use `useState` and `useReducer` for simple component-level state.
-*   **Global UI State**: Use **Zustand** or Context API for lightweight global UI state (e.g., theme, sidebar open/close). Avoid over-engineering with Redux.
-*   **Server State**: Use **TanStack Query (React Query)** or **SWR** for data fetching, caching, synchronization, and optimistic updates.
-    *   *Rule*: Do NOT use `useEffect` for data fetching.
-    *   Colocate query hooks inside `features/feature-name/api/`.
-
----
-
-## 5. Performance Optimization & Vite Specifics
-*   **Lazy Loading**: Use `React.lazy()` and `Suspense` for route-level code splitting to keep the initial bundle small.
-*   **Memoization**: Use `useMemo` for expensive calculations and `useCallback` for functions passed as props to highly optimized child components. Do not overuse; only apply to fix measured bottlenecks.
-*   **Vite Configuration**:
-    *   Use `build.rollupOptions.output.manualChunks` for vendor chunk splitting.
-    *   Set up path aliases (e.g., `@/components`) in `tsconfig.json` for cleaner imports.
-*   **Asset Management**: Keep large images out of source assets; optimize and compile correctly using Vite assets.
-
----
-
-## 6. Verification Workflow
-*   `npm run build` — Verify production compilation and lack of TS/lint errors.
-*   Check browser console for warning/error logs.
+## 4. Verification Check
+*   Run `npm run build` to verify production compiler compatibility.
+*   Validate console warnings and error logs in the browser.
