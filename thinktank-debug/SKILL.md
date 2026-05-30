@@ -1,10 +1,10 @@
 ---
 name: "thinktank:debug"
 description: |
-  A strategic sub-skill for debugging, fixing type errors, layout alignment, and codebase refactoring.
+  A strategic diagnostic and fix sub-skill for debugging, fixing type errors, layout alignment, performance lag, and codebase refactoring.
   AUTO-TRIGGERS on: "thinktank:debug", "-debug", "debug", "fix", "broken", "crash", "overflow", "not working", "error", "bug", "layout issue", "misaligned", "not rendering", "blank screen", "flickering".
-  Also triggered when analyzing runtime crashes, layout bugs, and TypeScript errors.
-version: 2.1.0
+  Also triggered when analyzing runtime crashes, memory leaks, and TypeScript compilation errors.
+version: 2.2.0
 ---
 
 # ThinkTank:Debug — Diagnostic & Fix Protocol
@@ -24,18 +24,18 @@ This sub-skill activates automatically when the user's message contains ANY of t
 | Signal Type | Keywords |
 |------------|----------|
 | Explicit invoke | `thinktank:debug`, `-debug` flag |
-| Error reports | `error`, `crash`, `broken`, `not working`, `bug`, `fails` |
-| Layout issues | `overflow`, `misaligned`, `layout issue`, `cut off`, `overlapping`, `too big`, `too small`, `congested`, `cramped`, `spilling` |
-| Visual bugs | `flickering`, `blank screen`, `not rendering`, `disappearing`, `wrong color`, `ugly` |
+| Error reports | `error`, `crash`, `broken`, `not working`, `bug`, `fails`, `regression` |
+| Layout/Perf issues | `overflow`, `misaligned`, `layout issue`, `lag`, `slow`, `sluggish`, `freeze`, `fps`, `render loop` |
+| Visual bugs | `flickering`, `blank screen`, `not rendering`, `disappearing`, `wrong color` |
 | Type errors | `type error`, `TS2322`, `TS2345`, `typescript error`, `type mismatch` |
 
-**When auto-triggered**: Print the activation banner and proceed directly to Phase A. Do NOT ask "should I debug this?" — just do it.
+**When auto-triggered**: Print the activation banner and proceed directly to Pre-Flight. Do NOT ask "should I debug this?" — just do it.
 
 ---
 
 ## 1. Pre-Flight: Brain Check (MANDATORY)
 
-Before ANY diagnosis work:
+Before running ANY diagnostics:
 
 1.  **Read `.thinktank/brain.md`** from the workspace root.
 2.  **Search for the error** in the "Error Registry" section.
@@ -43,10 +43,10 @@ Before ANY diagnosis work:
     ```
     ✅ Known issue from brain.md — Applied previous fix: [description]
     ```
-    Then skip to Phase E (Verify).
-4.  **If not found**: Proceed to Phase A.
+    Then skip directly to Phase 4 (Verify).
+4.  **If not found**: Proceed to Phase 1 (Diagnose).
 
-If `.thinktank/brain.md` doesn't exist, proceed to Phase A and create it during Phase E.
+If `.thinktank/brain.md` doesn't exist, proceed to Phase 1 and create it during Phase 5.
 
 ---
 
@@ -54,7 +54,7 @@ If `.thinktank/brain.md` doesn't exist, proceed to Phase A and create it during 
 
 ```mermaid
 graph TD
-    BC[Brain Check] --> A[Phase 1: Diagnose]
+    BC[Pre-Flight: Brain Check] --> A[Phase 1: Diagnose]
     A --> Q1{Clarification needed?}
     Q1 -->|Yes| W1[Ask ONE question, WAIT]
     Q1 -->|No| B[Phase 2: Propose Fix]
@@ -68,109 +68,84 @@ graph TD
 
 ### ⚠️ CRITICAL RULE: One Phase Per Turn
 
-**NEVER combine multiple phases in a single response.** The flow is:
+To maintain extreme focus and prevent code regressions, **NEVER combine multiple execution phases in a single response.**
 
-1.  **Turn 1**: Show diagnosis → ask ONE clarifying question if needed → STOP
-2.  **Turn 2**: Show proposed fix → ask for confirmation → STOP
-3.  **Turn 3**: Execute fix → show verification → STOP
+*   **Turn 1 (Diagnose)**: Present diagnosis → ask exactly ONE clarifying question if needed → STOP.
+*   **Turn 2 (Propose Fix)**: Present the minimal code diff proposal → ask for confirmation → STOP.
+*   **Turn 3 (Execute & Verify)**: Apply code edits → run build/lint verification checks → report outcome → STOP.
 
-If no clarification is needed in Turn 1, you may combine diagnosis + proposed fix in one turn. But NEVER dump diagnosis + fix + execution all at once.
+*Note: If the fix is trivially obvious (e.g. syntax typo, missing import), you may combine Phase 1 & 2 in Turn 1, but NEVER execute changes before showing the proposal.*
 
 ---
 
-### Phase 1: Diagnose — Error Analysis & Isolation
+### Phase 1: Diagnose — Isolation & Profiling
 
 *   **Action**: Locate the exact files, lines, and types affected.
-*   **Method**:
-    *   Read compilation traces or layout warning logs.
-    *   Use `grep_search` to find the exact code location.
-    *   Use `view_file` to read surrounding context (±20 lines around the error).
-*   **Rule**: Never guess where the error is. Proactively view the target code.
-*   **Output format**:
-    ```
+*   **Methodology**:
+    *   **TypeScript/Build Errors**: Run compiler typecheck to get exact line numbers. View $\pm20$ lines of context.
+    *   **UI Layout bugs**: Check for parent container dimensions, missing scroll view wrappers, or fixed pixel sizes.
+    *   **Performance/Lag**: 
+        *   Ask user to record an interaction using the **React DevTools Profiler**.
+        *   Inspect the **Flamegraph** and **Ranked Chart** for self-render times $>16\text{ms}$.
+        *   Isolate fast-changing state (typing inputs, animations, scroll events) from heavy components.
+*   **Output Format**:
+    ```markdown
     📍 **Diagnosis**
     - **File**: [filename with link]
     - **Line(s)**: [line numbers]
-    - **Category**: [Type Mismatch | Layout Overflow | State Bug | etc.]
-    - **Root Cause**: [Clear 1-2 sentence explanation]
+    - **Category**: [Type Mismatch | Layout Overflow | State Render Loop | Performance Lag]
+    - **Root Cause**: [Clear 1-2 sentence explanation of why it fails]
     ```
-*   **If clarification needed**: Ask exactly ONE question, then STOP and wait.
+
+---
 
 ### Phase 2: Propose Fix — Minimal Diff Plan
 
 *   **Action**: Map out the smallest possible code edit that resolves the issue.
 *   **Rules**:
-    *   Check `design.md` for existing tokens/patterns to reuse.
-    *   Avoid rewriting whole files or pulling in extra packages.
-    *   Avoid introducing new anti-patterns (check against the Practice Audit list in the main skill).
-*   **Output format**:
-    ```
+    *   Consult [React UI Patterns](./references/react_ui_patterns.md) or [React State Management](./references/react_state_management.md) to ensure the fix aligns with standard patterns.
+    *   Do not rewrite whole files. Avoid adding third-party dependencies unless strictly necessary.
+    *   Always verify if proposed variables or styles reuse tokens in `design.md`.
+*   **Output Format**:
+    ```markdown
     🔧 **Proposed Fix**
-    - **File(s)**: [list]
-    - **Change**: [description]
-    - **Impact**: [what this fixes, any side effects]
-    
+    - **File(s)**: [list with file links]
+    - **Change**: [Brief description of code change]
+    - **Impact**: [What this fixes, side-effects, if any]
+
     Proceed with this fix?
     ```
-*   **Wait for user confirmation** before executing. If the fix is trivially obvious (typo, missing import), you may proceed without asking.
-
-### Phase 3: Execute Fix — Targeted Edit
-
-*   **Action**: Apply the edit using precise file operations.
-*   **Label changes**:
-    *   `[Fixed]`: Line resolved.
-    *   `[Assumption]`: Reason for style/logic choice.
-*   **Keep edits surgical** — touch only what's broken.
-
-### Phase 4: Verify — Compile & Runtime Check
-
-*   **Action**: Run verification immediately after fix:
-    *   `node node_modules/typescript/lib/tsc.js --noEmit` — type checking
-    *   `npx expo lint` or equivalent — static analysis
-    *   Check for related warnings in the build output
-*   **If verification fails**: Loop back to Phase 1 with the new error. Do NOT stack fixes blindly.
-
-### Phase 5: Log to Brain
-
-*   **Action**: If this was a NEW error (not found in brain.md), append it:
-    ```markdown
-    ### [Short Error Title] — [Date]
-    - **Symptom**: [What the user reported]
-    - **Root Cause**: [What actually caused it]
-    - **Fix**: [What was changed]
-    - **File(s)**: [Affected files]
-    ```
-*   Update `.thinktank/brain.md` under the "## Error Registry" section.
 
 ---
 
-## 3. Common Issue Reference
+### Phase 3: Execute Fix — Targeted Edit
 
-### Layout Overflow (React Native)
-| Symptom | Fix |
-|---------|-----|
-| Text spills out of row | Add `flexShrink: 1` to text container, use `flex: 1` not fixed width |
-| Content hidden below screen | Wrap in `<ScrollView>`, ensure parent has `flex: 1` |
-| Elements cramped/no spacing | Add `gap` property to parent `<View>`, not margin on children |
-| Content under status bar | Use `SafeAreaView` from `react-native-safe-area-context` |
+*   **Action**: Apply the code modifications using precise edits.
+*   **Rules**:
+    *   Label edits with comments explaining the logic:
+        *   `[Fixed]`: Line resolved.
+        *   `[Assumption]`: Reason for style/logic choice.
 
-### Type Errors (React Native)
-| Symptom | Fix |
-|---------|-----|
-| Style prop rejected by component | Don't pass `TextStyle` to SVG/icon components — use component props instead |
-| `Property does not exist on type` | Check the type definition, add to interface or use optional chaining |
-| `Argument of type X not assignable to Y` | Usually a missing or extra property — compare interfaces side by side |
+---
 
-### State & Rendering Bugs
-| Symptom | Fix |
-|---------|-----|
-| Tab switch causes lag/flash | Use persistent mounting with `display: 'flex' \| 'none'` |
-| Component doesn't update | Ensure state is being set to a NEW reference (spread operator for objects/arrays) |
-| Stale closure data | Move the function inside `useEffect` or wrap in `useCallback` with correct deps |
+### Phase 4: Verify — Compile & Runtime Check
 
-### Android-Specific
-| Symptom | Fix |
-|---------|-----|
-| `elevation` shadow not showing | Ensure `backgroundColor` is set on the same view |
-| `symlink` error during npm install | Use `--no-bin-links` flag |
-| Keyboard covers input | Use `KeyboardAvoidingView` with `behavior="height"` |
+*   **Action**: Run validation immediately after editing files:
+    *   TypeScript: `tsc --noEmit`
+    *   Linter: `npx expo lint` or standard ESLint command
+    *   Vite Build (if applicable): `npm run build`
+*   **If verification fails**: Roll back changes or loop back to Phase 1 with the new error trace. Do NOT stack unverified fixes.
+
+---
+
+### Phase 5: Log to Brain
+
+If this was a new bug pattern, log the details into the workspace `.thinktank/brain.md` under the "## Error Registry" section to speed up future diagnostics:
+
+```markdown
+### [Error Symptom] — [YYYY-MM-DD]
+- **Symptom**: [What the user reported]
+- **Root Cause**: [Why it happened]
+- **Fix**: [What was changed to fix it]
+- **File(s)**: [Affected files]
+```

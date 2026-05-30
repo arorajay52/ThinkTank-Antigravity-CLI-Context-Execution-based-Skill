@@ -1,10 +1,13 @@
 ---
 name: thinktank
 description: |
-  A strategic reasoning skill that enforces a strict, high-leverage software engineering lifecycle:
-  Context Load → Discovery → Practice Audit → Understanding Lock → Concise Planning → Smart Execution → Verification.
-  Triggered when initiating new tasks, designing architecture, or working on React Vite (web) or React Expo (mobile) applications.
-version: 2.1.0
+  A strategic reasoning & execution skill that enforces a strict, high-leverage software engineering lifecycle.
+  Infused with:
+  - Brainstorming (Design Facilitator & Senior Reviewer mode, explicit assumptions/requirements, Hard Gate Understanding Lock)
+  - Concise Planning (Approach, Scope In/Out, Verb-First Action Items, Validation plan)
+  - Executing Plans (Critical review, batch execution with checkpoints, stop-on-blocker rules).
+  Triggered when initiating new tasks, designing architecture, or working on React/Vite/Expo frontends.
+version: 2.2.0
 ---
 
 # ThinkTank v2: Strategic Reasoning & Execution System
@@ -17,14 +20,14 @@ ThinkTank is an automated workflow system designed to maximize engineering effic
 
 ## 0. Pre-Flight: Context Load (MANDATORY)
 
-Before doing ANYTHING, load persistent context from the workspace:
+Before doing ANYTHING, load persistent context from the workspace root:
 
 1.  **Read `.thinktank/brain.md`** — Check for prior decisions, known errors, and user preferences.
 2.  **Read `.thinktank/design.md`** — Load design tokens, component inventory, and layout patterns.
 3.  **Read `.thinktank/product.md`** — Load app purpose, features, and tech stack.
 4.  **Read `.thinktank/plans.md`** — Check existing plan statuses.
 
-If these files don't exist yet, create them during Phase E (post-execution) using the templates in [Context File Templates](./examples/templates.md#context-files).
+If these files don't exist yet, create them during Phase 5 (post-execution) using the templates in [Context File Templates](./examples/templates.md#context-files).
 
 > **Token Rule**: If brain.md contains a decision relevant to the current task, skip re-scanning the codebase for that information. Trust the recorded context.
 
@@ -34,115 +37,129 @@ If these files don't exist yet, create them during Phase E (post-execution) usin
 
 ```mermaid
 graph TD
-    P[Pre-Flight: Context Load] --> A[Discovery]
-    A --> PA[Practice Audit]
-    PA --> B[Understanding Lock]
-    B -->|User Confirms| C[Concise Planning]
-    C -->|User Approves| D[Smart Execution]
-    D --> E[Verification & Context Update]
+    P[0. Pre-Flight: Context Load] --> A[1. Discovery & Audit]
+    A --> B[2. Understanding Lock]
+    B -->|User Confirms| C[3. Concise Planning]
+    C -->|User Approves| D[4. Smart Batch Execution]
+    D --> E[5. Verification & Context Update]
 ```
 
-### Phase A: Discovery (Context-Aware)
+### Phase 1: Discovery & Practice Audit (Context-Aware)
 
-*   **BEFORE asking any question**: Perform a targeted codebase scan using `grep_search` and `view_file` to identify:
+*   **Operating Mode**: You are operating as a **design facilitator and senior reviewer**, not a builder. Slow the process down just enough to get it right. No creative implementation, speculative features, or silent assumptions yet.
+*   **Codebase Scan**: BEFORE asking any questions, use `grep_search` and `view_file` to identify:
     *   Existing reusable components (modals, headers, navigation, buttons)
-    *   Current state management pattern (Context, props, single App state)
-    *   Styling patterns (StyleSheet, inline, theme tokens)
+    *   Current state management pattern (Zustand, React Query, Context, props)
+    *   Styling patterns (Tailwind, StyleSheet, Vanilla CSS)
     *   File structure and naming conventions
-*   **Report findings FIRST**: "I scanned your codebase and found: [existing modal system], [state pattern], [styling approach]."
-*   **Then ask questions** — but ONLY questions the codebase cannot answer:
-    *   ✅ "Your app supports 4 tabs. Should the new feature be a 5th tab or a sub-page of an existing tab?"
-    *   ❌ "Should we use a modal for confirmation?" ← WRONG if `showConfirm` already exists
-*   **Rules**:
-    *   **Max 2 questions per turn**. Wait for response. Ask follow-ups only if genuinely needed.
-    *   Every question must be **decision-forcing** — it has multiple valid paths with real trade-offs.
+*   **Report findings FIRST**: "I scanned your codebase and found: [existing systems]."
+*   **Ask One Question at a Time**:
+    *   Ask **at most 1-2 questions** per turn.
+    *   Prefer **multiple-choice questions** to minimize user friction.
     *   Never ask for information that can be obtained by reading the codebase.
-    *   Prefer multiple-choice, rankings, or binary options to minimize user friction.
+*   **Non-Functional Requirements**: Explicitly check or propose assumptions for:
+    *   Performance expectations (e.g., render times, render counts)
+    *   Scale (volume of users, data, traffic)
+    *   Security, privacy, or API constraints (e.g., Supabase RLS)
+*   **Practice Audit Gate**: Review the request for platform-specific anti-patterns (e.g., laggy tab rendering, inline styles inside maps, missing safe areas). If issues are found, raise them in a warning callout.
 
-### Phase A.5: Practice Audit (MANDATORY GATE)
+---
 
-After discovery, BEFORE proceeding to Understanding Lock, review the user's request for anti-patterns and potential issues:
+### Phase 2: Understanding Lock (Hard Gate)
 
-*   **Scan the request** for these red flags:
-    *   Inline styles in loops or maps
-    *   Using `any` type instead of proper interfaces
-    *   Missing error boundaries or loading states
-    *   Uncontrolled re-renders (functions defined in render without `useCallback`)
-    *   Hardcoded colors/sizes instead of design tokens
-    *   Conditional rendering (`&&`) for tab content (causes mount/unmount lag)
-    *   Raw `<View>` as screen root without `<ScrollView>` (causes overflow on small screens)
-    *   Fixed pixel dimensions that won't scale across devices
-    *   `.map()` inside `<ScrollView>` for large lists (use `<FlatList>`)
-    *   Missing keyboard avoidance for forms
+Before writing any plans or code, you MUST pause and establish an immutable alignment foundation. 
 
-*   **If issues found**, present them clearly:
-    ```
-    > [!WARNING]
-    > **Practice Audit — 2 issues flagged:**
-    > 1. Using conditional mount (`&&`) for tab switching causes 100-200ms lag.
-    >    **Recommended**: Persistent mount with `display: 'flex' | 'none'`.
-    > 2. Hardcoded color `#333` found — should use design token from design.md.
-    >    **Recommended**: Use the existing `colors.textPrimary` token.
-    ```
-*   **Get confirmation** before proceeding. The user can override if they have a good reason.
-*   **If no issues**: State "✅ Practice Audit passed — no anti-patterns detected."
+#### Output Format:
+```markdown
+### 🔒 UNDERSTANDING LOCK
 
-### Phase B: Understanding Lock
+*   **Goal**: [Concise summary of what is being built/refactored]
+*   **Existing Patterns to Reuse**: [Components, modals, state patterns found in codebase]
+*   **Non-Functional Requirements**: [Performance, Scale, Security, etc.]
+*   **Assumptions**: [List all assumptions explicitly]
+*   **Risks**: [e.g., Metro caching, Supabase RLS bypass, overflow on small screens]
+*   **Practice Audit**: [Summary of flagged items + agreed resolutions, or "Passed"]
+*   **Open Questions**: [List unresolved questions, if any]
+*   **Decision Log**: [Record alternatives considered and why this path was chosen]
+```
 
-*   **Goal**: Create an immutable alignment foundation.
-*   **Action**: Summarize findings in a clean "Understanding Lock" containing:
-    *   **Goal**: The core objective.
-    *   **Existing Patterns to Reuse**: Components, modals, state patterns found during Discovery.
-    *   **Constraints**: Technology stack, performance, timeline, file permissions.
-    *   **Priorities**: What matters most.
-    *   **Risks**: Potential issues.
-    *   **Practice Audit Results**: Any flagged items and agreed resolutions.
-    *   **Proposed Direction**: Architectural approach.
-*   **Rules**: Ask the user: *"Is anything in this Understanding Lock incorrect or missing?"* **Do not proceed** until the user confirms.
+Then ask the user:
+> *"Does this accurately reflect your intent? Please confirm or correct anything before we move to planning."*
 
-### Phase C: Concise Planning
+**Do NOT proceed** to Planning until the user gives explicit confirmation.
 
-*   **Goal**: Map a practical sequence of high-leverage actions.
-*   **Action**: Create or update the `implementation_plan.md` artifact.
-*   **Also update** `.thinktank/plans.md` with the new plan entry (name + "🔄 In Progress").
-*   **Create** `.thinktank/plans/[plan-name].md` with phase breakdown.
-*   **Rules**: Focus on sequencing and target file modifications. Keep it lean. Obtain explicit approval before executing.
+---
 
-### Phase D: Smart Execution
+### Phase 3: Concise Planning
 
-*   **Goal**: Code accurately according to the locked plan.
-*   **Action**: Create/update the `task.md` checklist. Update it progressively (`[ ]` → `[/]` → `[x]`).
-*   **Rules**: Explicitly label assumptions in code edits:
+Once the Understanding Lock is confirmed, turn the request into a **single, actionable plan** inside the `implementation_plan.md` artifact.
+
+#### Plan Template:
+```markdown
+# Plan
+
+<1-3 sentences on what and why - high level approach>
+
+## Scope
+- **In**: [What is included]
+- **Out**: [What is excluded - YAGNI ruthlessly]
+
+## Action Items
+- [ ] Step 1: [Action verb first] - [Specific file / module]
+- [ ] Step 2: [Action verb first] - [Specific file / module]
+- [ ] ...
+- [ ] Step N: [Validation/Testing]
+
+## Open Questions
+- [None or max 3 non-blocking questions]
+```
+
+#### Checklist Guidelines:
+*   **Atomic**: Each step should be a single, logical unit of work.
+*   **Verb-first**: "Add...", "Refactor...", "Verify...".
+*   **Concrete**: Name specific files, routes, or components.
+*   **Validation**: Include explicit testing/verification steps.
+
+**Do NOT proceed** to execution until the user approves the plan.
+
+---
+
+### Phase 4: Smart Batch Execution
+
+Execute the approved plan systematically in batches to allow checkpoints for review.
+
+*   **Batch Execution**: Default execution limit is **at most 3 tasks at a time**.
+*   **Progress Tracking**: Maintain a `task.md` checklist. Update it progressively (`[ ]` → `[/]` → `[x]`).
+*   **Explicit Code Labeling**: Label assumptions in code comments:
     *   `[Known]`: Facts established from codebase analysis.
-    *   `[Assumption]`: Reasonable guesses based on best practices.
-    *   `[Unverified]`: Hypotheses that need tests or runtime verification.
-*   **Check design.md** before adding any new colors, spacing, or typography — reuse existing tokens.
-
-### Phase E: Verification & Context Update
-
-*   **Goal**: Prove correctness, document outcomes, and update persistent context.
-*   **Action**:
-    1.  Run lint/build/tests. Document the changes in `walkthrough.md`.
-    2.  **Update `.thinktank/brain.md`** — Log any new major decisions or error fixes.
-    3.  **Update `.thinktank/design.md`** — If new components or tokens were created.
-    4.  **Update `.thinktank/plans.md`** — Mark plan as "✅ Complete".
-    5.  **Update `.thinktank/plans/[plan-name].md`** — Mark all tasks complete.
+    *   `[Assumption]`: Reason for style/logic choice.
+*   **Verification Check**: Run verification tests as specified after each task.
+*   **Batch Handoff**: When a batch is complete, show what was implemented, show verification outputs, and report: *"Ready for feedback. Proceed with the next batch?"*
+*   **Stop-on-Blocker Rule**: STOP executing immediately when:
+    *   You hit a blocker mid-batch (missing dependency, test failure, unclear plan).
+    *   Verification fails repeatedly.
+    *   *Do NOT guess or force through blockers — stop and ask.*
 
 ---
 
-## 2. Token Optimization Protocol
+### Phase 5: Verification & Context Update
 
-1.  **Context files first** — Read brain.md and design.md before scanning codebase. Skip scanning for info already recorded.
-2.  **Targeted reads** — Use `grep_search` for specific patterns, not `view_file` on entire large files.
-3.  **Never re-read** files already in your context window.
-4.  **Summarize to brain.md** — After learning something significant about the codebase, write it to brain.md so future sessions don't need to re-discover it.
-5.  **Plans index** — Check plans.md before creating duplicate plans for work already done.
+Prove correctness, persist the Decision Log, and update the persistent context.
+
+1.  **Run Build/Lint Checks**: Run typecheck, build, and linter to verify zero compilation errors.
+2.  **Update `.thinktank/brain.md`**: Log any new major decisions, anti-patterns, or error-fix logs under the Error Registry.
+3.  **Update `.thinktank/design.md`**: If new component tokens, styling variables, or components were added.
+4.  **Update `.thinktank/plans.md`**: Mark the plan status as `✅ Complete`.
 
 ---
 
-## 3. Platform Specific Guidelines
+## 2. Platform Specific Guidelines
 
-ThinkTank is highly optimized for React Web, Mobile, and Version Control workflows. For specific instructions, **ALWAYS** refer to:
+For specific instructions on front-end rendering, state management, performance, and deployment, **ALWAYS** refer to:
 *   [React Vite & Expo Guidelines](./references/react_vite_expo_guidelines.md)
+*   [React UI Patterns](./references/react_ui_patterns.md)
+*   [React State Management](./references/react_state_management.md)
+*   [React Performance & Profiling](./references/react_performance.md)
+*   [Expo Mobile Deployment](./references/expo_deployment.md)
 *   [Git & Version Control Guidelines](./references/git_guidelines.md)
 *   [Templates and Context File Examples](./examples/templates.md)
