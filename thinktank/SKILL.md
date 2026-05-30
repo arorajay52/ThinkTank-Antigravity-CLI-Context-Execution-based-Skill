@@ -7,7 +7,7 @@ description: |
   - Concise Planning (Approach, Scope In/Out, Verb-First Action Items, Validation plan)
   - Executing Plans (Critical review, batch execution with checkpoints, stop-on-blocker rules).
   Triggered when initiating new tasks, designing architecture, or working on React/Vite/Expo frontends.
-version: 2.3.0
+version: 2.4.0
 ---
 
 # ThinkTank v2: Strategic Reasoning & Execution System
@@ -158,13 +158,34 @@ Prove correctness, persist the Decision Log, and update the persistent context.
 
 ---
 
-## 2. Platform Specific Guidelines
+## 2. On-Demand Reference Loading Protocol (Token Optimization)
 
-For specific instructions on front-end rendering, state management, performance, and deployment, **ALWAYS** refer to:
-*   [React Vite & Expo Guidelines](./references/react_vite_expo_guidelines.md)
-*   [React UI Patterns](./references/react_ui_patterns.md)
-*   [React State Management](./references/react_state_management.md)
-*   [React Performance & Profiling](./references/react_performance.md)
-*   [Expo Mobile Deployment](./references/expo_deployment.md)
-*   [Git & Version Control Guidelines](./references/git_guidelines.md)
-*   [Templates and Context File Examples](./examples/templates.md)
+To conserve context window limits and prevent token bloat, **DO NOT** read all reference files at start. Only read the specific file(s) that match the domain of the current task.
+
+### 🌐 Web Frontend Tasks (React + Vite)
+If implementing browser-based pages, features, or components:
+*   **Load**: [React Vite Web Guidelines](./references/react_vite_web.md)
+*   *Rule*: Ignore all Expo/mobile reference files.
+
+### 📱 Native Mobile Tasks (React Native + Expo)
+If implementing native mobile components, tab layouts, or EAS submissions:
+*   **Load**: [React Expo Mobile Guidelines](./references/expo_mobile.md)
+*   **Load**: [Expo Mobile Deployment](./references/expo_deployment.md)
+*   *Rule*: Ignore web-only guidelines.
+
+### 🔌 Mobile Wrapper Tasks (React + Capacitor)
+If implementing hybrid mobile wrappers or native JS bridging features:
+*   **Load**: [Capacitor Mobile Guidelines](./references/capacitor_mobile.md)
+*   *Rule*: Ignore Expo native files.
+
+### 🗄️ Database & Logic Tasks (Postgres + Supabase)
+If writing migrations, security RLS policies, schemas, triggers, or SQL functions:
+*   **Load**: [Postgres & Supabase Backend Guidelines](./references/postgres_backend.md)
+
+### 🧪 UI States, Performance & Versioning (All Projects)
+Load these only when actively building UI logic, profiling renders, or staging commits:
+*   **UI States**: [React UI Patterns](./references/react_ui_patterns.md)
+*   **State Management**: [React State Management](./references/react_state_management.md)
+*   **Performance Profiling**: [React Performance & Profiling](./references/react_performance.md)
+*   **Versioning / Committing**: [Git & Version Control Guidelines](./references/git_guidelines.md)
+*   **Templates**: [Templates and Context File Examples](./examples/templates.md)
